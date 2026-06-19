@@ -4,6 +4,7 @@ import java.net.UnknownHostException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
+import java.util.List;
 
 public interface InterfaceRMI extends Remote {
 	String buscarDonoChunk (int chunkId) throws RemoteException;
@@ -18,4 +19,7 @@ public interface InterfaceRMI extends Remote {
 		 
 	ArrayList<Integer> getPortaNosAtivos() throws RemoteException;
 
+	List<Integer> buscarChunkDono(String Ip);
+	
+	
 }

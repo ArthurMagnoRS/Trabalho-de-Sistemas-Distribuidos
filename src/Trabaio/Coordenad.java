@@ -7,6 +7,7 @@ import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Coordenad extends UnicastRemoteObject implements InterfaceRMI {
@@ -15,6 +16,7 @@ public class Coordenad extends UnicastRemoteObject implements InterfaceRMI {
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
+	
 	
 	private Map <Integer, String> tabelaChunks;
 	private ArrayList<String> NosAtivos;
@@ -27,18 +29,28 @@ public class Coordenad extends UnicastRemoteObject implements InterfaceRMI {
 		this.tabelaChunks = new HashMap<>();
 		this.NosAtivos = new ArrayList<>();
 		this.PortaNosAtivos = new ArrayList<>();
-		this.soquete = new Socket();
+		//this.soquete = new Socket();
 	}
 	@Override
 	public String buscarDonoChunk(int chunkId) throws RemoteException{
 		
-		return tabelaChunks.get(chunkId);
+		return this.tabelaChunks.get(chunkId);
 	}
 	@Override
 	
 	public void registrarPosseChunk (int chunkId, String IpDoNode) throws RemoteException{
 		this.tabelaChunks.put(chunkId, IpDoNode);
 		
+	}
+	@Override
+	public List<Integer> buscarChunkDono(String Ip){
+		List<Integer> chunksDoNode = new ArrayList<>();
+		for (Map.Entry<Integer, String> entrada : this.tabelaChunks.entrySet()) {
+			if (entrada.getValue().equals(Ip)) {
+				chunksDoNode.add(entrada.getKey());
+			}
+		}
+		return chunksDoNode; 
 	}
 	@Override
 	public int verificaVazio() throws RemoteException {

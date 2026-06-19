@@ -54,13 +54,20 @@ public class ServidorPrincipal {
 					ArrayList<Integer> portaRespec = cordenador.getPortaNosAtivos();
 					System.out.println(portaRespec);
 					int numNosAtivos = nosAtivos.size();
+					bytesLidos = funil.read(bufferArqv);
 					while ((bytesLidos = funil.read(bufferArqv)) != -1) {
 						int noAtual = idChunk % numNosAtivos;
 						cordenador.enviarPartes(bufferArqv,nosAtivos.get(noAtual), portaRespec.get(noAtual), bytesLidos, idChunk);	
 						idChunk++;
 					}
+					
 					funil.close();
-					System.out.println("Arquivo enviado com sucesso!");
+					System.out.println("Arquivo inteiro dividido e compartilhado com sucesso!");
+					byte[] bufferAviso = new byte[0];
+					for (int i=0;i<nosAtivos.size();i++) {
+						cordenador.enviarPartes(bufferAviso, nosAtivos.get(i), portaRespec.get(i), idChunk, -1); 
+						// mandando o idChunk no lugar dos bytesLidos pq ja mostra quandos chunks foram enviados
+					}
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
