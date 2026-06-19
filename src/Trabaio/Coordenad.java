@@ -22,6 +22,7 @@ public class Coordenad extends UnicastRemoteObject implements InterfaceRMI {
 	private ArrayList<String> NosAtivos;
 	private ArrayList<Integer> PortaNosAtivos;
 	private Socket soquete;
+	private String nome;
 	
 	public Coordenad() throws IOException {
 	
@@ -86,6 +87,16 @@ public class Coordenad extends UnicastRemoteObject implements InterfaceRMI {
 		// DataInputStream é para dados que estão sendo recebidos
 		// FileOutputStream e FileInputStream funcionam ao contrario, o primeiro é para dados recebidos que vao compor um arquivo
 		// e o segundo é para dados que vao ser enviados de um arquivo especifico
+	}
+	@Override
+	public void setNomeArquivo(String nome) throws RemoteException {
+		this.nome = nome;
+		
+	}
+	@Override
+	public String getNomeArquivo() throws RemoteException {
+		
+		return this.nome;
 	}
 	
 	

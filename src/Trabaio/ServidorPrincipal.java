@@ -43,8 +43,9 @@ public class ServidorPrincipal {
 						System.out.println("Existem "+cordenador.getNosAtivos().size() + " nós disponíveis para compartilhar.");
 					
 					File arquivo = new File(input);
+					cordenador.setNomeArquivo(arquivo.getName());
 					try (FileInputStream funil = new FileInputStream(arquivo)){
-						
+					
 					byte[] bufferArqv = new byte[1024*1024];
 					System.out.println("Tamanho do arquivo em bytes: " + arquivo.length());
 					int bytesLidos = 0;

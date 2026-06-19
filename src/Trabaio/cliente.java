@@ -9,6 +9,7 @@ import java.net.Socket;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -33,6 +34,8 @@ public class cliente {
 				DataInputStream dis = new DataInputStream(recebimento.getInputStream());
 				// leitura deve ser feita na ORDEM DE ENVIO
 				int idChunk = dis.readInt(); // primeiro o id
+				
+				
 				if (idChunk == -1) {
 					System.out.println("O principal ja enviou todos os pedaços de arquivos.");
 					int totalDeChunks = dis.readInt();
@@ -65,11 +68,37 @@ public class cliente {
 									dos.writeInt(i); // chunk especifico
 									int tamResp = disResposta.readInt();
 									byte[] buffer = new byte[tamResp];
-									disResposta.readFully(buffer); // leitura dos bytes.
+									disResposta.readFully(buffer); // leitura dos bytes enviados
 									// logica de envio acima, e pelo proprio socket aberto envioReq, vamos esperar o que falta também.
+									File arqvMolde = new File("chunk_"+i+".part");
+									FileOutputStream funil = new FileOutputStream(arqvMolde);
 									
-										 
+									funil.write(buffer);
+									funil.close();
+									envioReq.close();
 								}
+								// parte de reconstrucao do arquivo aqui
+									String nomeArqv = coordenadoremoto.getNomeArquivo();
+									File arquivoTotal = new File ("Reconstruido_"+nomeArqv);
+									try (FileOutputStream funil = new FileOutputStream(arquivoTotal, true)){
+										for (int j = 0;j<totalDeChunks;j++) {
+											File chunkLocal = new File ("chunk_"+j+".part");
+											try (FileInputStream canudo = new FileInputStream(chunkLocal)){
+												byte[] buffer = new byte[(int)chunkLocal.length()];
+												canudo.read(buffer);
+												funil.write(buffer);
+												canudo.close();
+											}catch (IOException e) {
+												e.printStackTrace();
+											}
+										}
+										
+										funil.close();
+										System.out.println("Arquivo reconstruído para este nó!");
+									}catch (IOException e) {
+										e.printStackTrace();
+									}
+								
 							}
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -79,8 +108,27 @@ public class cliente {
 					continue;
 					
 				} else if (idChunk == -2) { // recebimento de PEDIDO DE ENVIO DE CHUNKS PARA OUTRO NO
-					
+					int chunkReq = dis.readInt();
+					System.out.println("Um dos nós requisitou o chunk "+chunkReq);
+					File chunkLocal = new File("chunk_"+chunkReq+".part");
+					if (chunkLocal.exists()) {
+						try(FileInputStream canudo = new FileInputStream(chunkLocal)){
+							byte[] bufferChunk = new byte[(int) chunkLocal.length()];
+							canudo.read(bufferChunk);
+							
+							DataOutputStream envio = new DataOutputStream(recebimento.getOutputStream());
+							envio.writeInt((int) chunkLocal.length()); // primeiro o tamanho
+							envio.write(bufferChunk); // agora o chunk de fato
+							canudo.close();
+							envio.close();
+							recebimento.close();
+							System.out.println("Envio feito com sucesso!");
+						} catch (IOException e) {
+							e.printStackTrace();
+					}
 				}
+					continue;
+			}else {
 				int tamArqv = dis.readInt(); // dps o tamanho
 				byte[] buffer = new byte[tamArqv]; // agr o buffer
 				dis.readFully(buffer);
@@ -90,7 +138,8 @@ public class cliente {
 				coordenadoremoto.registrarPosseChunk(idChunk, meuIP);
 				System.out.println("Guardei o pedaço "+idChunk+" do arquivo com sucesso!");
 				funil.close();
-				
+				recebimento.close();
+			}
 			}
 				
 				
