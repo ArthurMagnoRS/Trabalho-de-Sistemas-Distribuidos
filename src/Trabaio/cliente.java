@@ -19,9 +19,21 @@ public class cliente {
 	public static void main (String[] args) {
 		try {
 			String ipServer = "127.0.0.1";
-			String meuIP = "127.0.0.1";
-			int minhaPorta = 5000;
-			int portaServer = 1099;
+			// ========================================================
+						// PARA TESTAR MÚLTIPLOS NÓS, MUDA ESTAS DUAS VARIÁVEIS!
+						// Nó 1: meuIP = "127.0.0.1" | minhaPorta = 5000
+										//String meuIP = "127.0.0.2";  int minhaPorta = 5001;
+						// Nó 3: meuIP = "127.0.0.3" | minhaPorta = 5002
+						// ========================================================
+						String meuIP = "127.0.0.1";
+						int minhaPorta = 5000;
+						int portaServer = 1099;
+						
+						
+						File pastaNode = new File("No_" + minhaPorta);
+						if (!pastaNode.exists()) {
+							pastaNode.mkdir(); // Cria a pasta se não existir
+						}
 			
 			Registry registry = LocateRegistry.getRegistry(ipServer, portaServer);
 			InterfaceRMI coordenadoremoto = (InterfaceRMI) registry.lookup("CoordenadorServidor");
@@ -70,7 +82,7 @@ public class cliente {
 									byte[] buffer = new byte[tamResp];
 									disResposta.readFully(buffer); // leitura dos bytes enviados
 									// logica de envio acima, e pelo proprio socket aberto envioReq, vamos esperar o que falta também.
-									File arqvMolde = new File("chunk_"+i+".part");
+									File arqvMolde = new File(pastaNode, "chunk_"+i+".part");
 									FileOutputStream funil = new FileOutputStream(arqvMolde);
 									
 									funil.write(buffer);
@@ -79,15 +91,16 @@ public class cliente {
 								}
 								// parte de reconstrucao do arquivo aqui
 									String nomeArqv = coordenadoremoto.getNomeArquivo();
-									File arquivoTotal = new File ("Reconstruido_"+nomeArqv);
+									File arquivoTotal = new File (pastaNode, "Reconstruido_"+nomeArqv);
 									try (FileOutputStream funil = new FileOutputStream(arquivoTotal, true)){
 										for (int j = 0;j<totalDeChunks;j++) {
-											File chunkLocal = new File ("chunk_"+j+".part");
+											File chunkLocal = new File (pastaNode,"chunk_"+j+".part");
 											try (FileInputStream canudo = new FileInputStream(chunkLocal)){
 												byte[] buffer = new byte[(int)chunkLocal.length()];
 												canudo.read(buffer);
 												funil.write(buffer);
 												canudo.close();
+												System.out.println("Parte "+j+" do arquivo anexada!");
 											}catch (IOException e) {
 												e.printStackTrace();
 											}
@@ -110,7 +123,7 @@ public class cliente {
 				} else if (idChunk == -2) { // recebimento de PEDIDO DE ENVIO DE CHUNKS PARA OUTRO NO
 					int chunkReq = dis.readInt();
 					System.out.println("Um dos nós requisitou o chunk "+chunkReq);
-					File chunkLocal = new File("chunk_"+chunkReq+".part");
+					File chunkLocal = new File(pastaNode, "chunk_"+chunkReq+".part");
 					if (chunkLocal.exists()) {
 						try(FileInputStream canudo = new FileInputStream(chunkLocal)){
 							byte[] bufferChunk = new byte[(int) chunkLocal.length()];
@@ -132,7 +145,7 @@ public class cliente {
 				int tamArqv = dis.readInt(); // dps o tamanho
 				byte[] buffer = new byte[tamArqv]; // agr o buffer
 				dis.readFully(buffer);
-				File arquivoMoldado = new File("chunk_"+idChunk+".part");
+				File arquivoMoldado = new File(pastaNode, "chunk_"+idChunk+".part");
 				FileOutputStream funil = new FileOutputStream(arquivoMoldado);
 				funil.write(buffer);
 				coordenadoremoto.registrarPosseChunk(idChunk, meuIP);

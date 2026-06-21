@@ -44,7 +44,7 @@ public class Coordenad extends UnicastRemoteObject implements InterfaceRMI {
 		
 	}
 	@Override
-	public List<Integer> buscarChunkDono(String Ip){
+	public List<Integer> buscarChunkDono(String Ip) throws RemoteException{
 		List<Integer> chunksDoNode = new ArrayList<>();
 		for (Map.Entry<Integer, String> entrada : this.tabelaChunks.entrySet()) {
 			if (entrada.getValue().equals(Ip)) {
@@ -81,7 +81,10 @@ public class Coordenad extends UnicastRemoteObject implements InterfaceRMI {
 		// dados sao enviados NESTA ORDEM.
 		dos.writeInt(idChunk); // envio do ID do chunk
 		dos.writeInt(bytesLidos); // envio de quantos bytes foram lidos
+		if (idChunk != -1) {
 		dos.write(buffer, 0, bytesLidos);
+		}
+		
 		this.soquete.close();
 		// lembrando: DataOutputStream é para dados que vao ser enviados (associar com saída)
 		// DataInputStream é para dados que estão sendo recebidos

@@ -55,7 +55,6 @@ public class ServidorPrincipal {
 					ArrayList<Integer> portaRespec = cordenador.getPortaNosAtivos();
 					System.out.println(portaRespec);
 					int numNosAtivos = nosAtivos.size();
-					bytesLidos = funil.read(bufferArqv);
 					while ((bytesLidos = funil.read(bufferArqv)) != -1) {
 						int noAtual = idChunk % numNosAtivos;
 						cordenador.enviarPartes(bufferArqv,nosAtivos.get(noAtual), portaRespec.get(noAtual), bytesLidos, idChunk);	

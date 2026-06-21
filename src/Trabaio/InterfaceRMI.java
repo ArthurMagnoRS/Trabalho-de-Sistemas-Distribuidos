@@ -19,7 +19,7 @@ public interface InterfaceRMI extends Remote {
 		 
 	ArrayList<Integer> getPortaNosAtivos() throws RemoteException;
 
-	List<Integer> buscarChunkDono(String Ip);
+	List<Integer> buscarChunkDono(String Ip) throws RemoteException;
 	
 	void setNomeArquivo(String nome) throws RemoteException;
 	
