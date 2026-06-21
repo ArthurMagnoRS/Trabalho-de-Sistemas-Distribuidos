@@ -22,8 +22,16 @@ public interface InterfaceRMI extends Remote {
 	List<Integer> buscarChunkDono(String Ip) throws RemoteException;
 	
 	void setNomeArquivo(String nome) throws RemoteException;
-	
+
 	String getNomeArquivo() throws RemoteException;
-	
-	
+
+	void removerNoAtivo(String ip, int porta) throws RemoteException;
+
+	void setCaminhoArquivo(String caminho) throws RemoteException;
+
+	String getCaminhoArquivo() throws RemoteException;
+
+	void setTotalChunks(int total) throws RemoteException;
+
+	int getTotalChunks() throws RemoteException;
 }

@@ -20,13 +20,14 @@ public class cliente {
 		try {
 			String ipServer = "127.0.0.1";
 			// ========================================================
-						// PARA TESTAR MÚLTIPLOS NÓS, MUDA ESTAS DUAS VARIÁVEIS!
-						// Nó 1: meuIP = "127.0.0.1" | minhaPorta = 5000
-										//String meuIP = "127.0.0.2";  int minhaPorta = 5001;
-						// Nó 3: meuIP = "127.0.0.3" | minhaPorta = 5002
+						// PARA TESTAR MÚLTIPLOS NÓS, MUDA APENAS A PORTA!
+						// O IP é sempre 127.0.0.1 no macOS (outros loopbacks não existem)
+						// Nó 1: minhaPorta = 6000
+						// Nó 2: minhaPorta = 6001
+						// Nó 3: minhaPorta = 6002
 						// ========================================================
 						String meuIP = "127.0.0.1";
-						int minhaPorta = 5000;
+						int minhaPorta = 6000;
 						int portaServer = 1099;
 						
 						
@@ -35,12 +36,12 @@ public class cliente {
 							pastaNode.mkdir(); // Cria a pasta se não existir
 						}
 			
+			ServerSocket soqueteNode = new ServerSocket(minhaPorta);
 			Registry registry = LocateRegistry.getRegistry(ipServer, portaServer);
 			InterfaceRMI coordenadoremoto = (InterfaceRMI) registry.lookup("CoordenadorServidor");
 			System.out.println("Conectando ao registro RMI em: " + ipServer);
 			coordenadoremoto.NoduloAtivo(meuIP, minhaPorta);
 			System.out.println("Conexão efetuada com sucesso! Carregando demais configurações e aceitando envios!");
-			ServerSocket soqueteNode = new ServerSocket(minhaPorta); // preciso colocar a propria porta para eu poder abrir o 'recebimento'
 			while (true) {
 				Socket recebimento = soqueteNode.accept();
 				DataInputStream dis = new DataInputStream(recebimento.getInputStream());
@@ -57,7 +58,7 @@ public class cliente {
 					new Thread(() -> {
 						try {
 							System.out.println("Verificando posse de chunks...");
-							List<Integer> meusChunks = coordenadoremoto.buscarChunkDono(meuIP); // aqui estao os chunks que preciso fazer o download.
+							List<Integer> meusChunks = coordenadoremoto.buscarChunkDono(meuIP + ":" + minhaPorta); // aqui estao os chunks que preciso fazer o download.
 							System.out.println("Possuo "+meusChunks.size()+" chunks: "+meusChunks);
 							
 							Scanner scanner = new Scanner(System.in);
@@ -68,12 +69,11 @@ public class cliente {
 									if (meusChunks.contains(i)) {
 										continue;
 									}
-									String dono = coordenadoremoto.buscarDonoChunk(i);
-									ArrayList<String> nodes = coordenadoremoto.getNosAtivos();
-									int indice = nodes.indexOf(dono);
-									ArrayList<Integer> portas = coordenadoremoto.getPortaNosAtivos();
-									int portaReq = portas.get(indice);
-									Socket envioReq = new Socket(dono,portaReq);
+									String dono = coordenadoremoto.buscarDonoChunk(i); // formato "IP:porta"
+									String[] partes = dono.split(":");
+									String donoIp = partes[0];
+									int donoPorta = Integer.parseInt(partes[1]);
+									Socket envioReq = new Socket(donoIp, donoPorta);
 									DataOutputStream dos = new DataOutputStream(envioReq.getOutputStream());
 									DataInputStream disResposta = new DataInputStream(envioReq.getInputStream());
 									dos.writeInt(-2); // flag de requisicao do chunk
@@ -96,8 +96,7 @@ public class cliente {
 										for (int j = 0;j<totalDeChunks;j++) {
 											File chunkLocal = new File (pastaNode,"chunk_"+j+".part");
 											try (FileInputStream canudo = new FileInputStream(chunkLocal)){
-												byte[] buffer = new byte[(int)chunkLocal.length()];
-												canudo.read(buffer);
+												byte[] buffer = canudo.readAllBytes();
 												funil.write(buffer);
 												canudo.close();
 												System.out.println("Parte "+j+" do arquivo anexada!");
@@ -126,8 +125,7 @@ public class cliente {
 					File chunkLocal = new File(pastaNode, "chunk_"+chunkReq+".part");
 					if (chunkLocal.exists()) {
 						try(FileInputStream canudo = new FileInputStream(chunkLocal)){
-							byte[] bufferChunk = new byte[(int) chunkLocal.length()];
-							canudo.read(bufferChunk);
+							byte[] bufferChunk = canudo.readAllBytes();
 							
 							DataOutputStream envio = new DataOutputStream(recebimento.getOutputStream());
 							envio.writeInt((int) chunkLocal.length()); // primeiro o tamanho
@@ -141,14 +139,20 @@ public class cliente {
 					}
 				}
 					continue;
-			}else {
+			} else if (idChunk == -3) { // ping do servidor - responde ack e continua
+				DataOutputStream ack = new DataOutputStream(recebimento.getOutputStream());
+				ack.writeInt(1);
+				ack.flush();
+				recebimento.close();
+				continue;
+			} else {
 				int tamArqv = dis.readInt(); // dps o tamanho
 				byte[] buffer = new byte[tamArqv]; // agr o buffer
 				dis.readFully(buffer);
 				File arquivoMoldado = new File(pastaNode, "chunk_"+idChunk+".part");
 				FileOutputStream funil = new FileOutputStream(arquivoMoldado);
 				funil.write(buffer);
-				coordenadoremoto.registrarPosseChunk(idChunk, meuIP);
+				coordenadoremoto.registrarPosseChunk(idChunk, meuIP + ":" + minhaPorta);
 				System.out.println("Guardei o pedaço "+idChunk+" do arquivo com sucesso!");
 				funil.close();
 				recebimento.close();

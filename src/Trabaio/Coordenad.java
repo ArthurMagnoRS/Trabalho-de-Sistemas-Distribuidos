@@ -1,14 +1,12 @@
 package Trabaio;
 import java.rmi.server.UnicastRemoteObject;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.Socket;
-import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Coordenad extends UnicastRemoteObject implements InterfaceRMI {
 	
@@ -18,19 +16,19 @@ public class Coordenad extends UnicastRemoteObject implements InterfaceRMI {
 	private static final long serialVersionUID = 1L;
 	
 	
-	private Map <Integer, String> tabelaChunks;
-	private ArrayList<String> NosAtivos;
-	private ArrayList<Integer> PortaNosAtivos;
-	private Socket soquete;
+	private Map<Integer, String> tabelaChunks;
+	private List<String> NosAtivos;
+	private List<Integer> PortaNosAtivos;
 	private String nome;
+	private String caminhoArquivo;
+	private int totalChunks;
 	
 	public Coordenad() throws IOException {
-	
+
 		super();
-		this.tabelaChunks = new HashMap<>();
-		this.NosAtivos = new ArrayList<>();
-		this.PortaNosAtivos = new ArrayList<>();
-		//this.soquete = new Socket();
+		this.tabelaChunks = new ConcurrentHashMap<>();
+		this.NosAtivos = new CopyOnWriteArrayList<>();
+		this.PortaNosAtivos = new CopyOnWriteArrayList<>();
 	}
 	@Override
 	public String buscarDonoChunk(int chunkId) throws RemoteException{
@@ -58,7 +56,7 @@ public class Coordenad extends UnicastRemoteObject implements InterfaceRMI {
 		return this.tabelaChunks.size();
 	}
 	@Override
-	public void NoduloAtivo(String Ip, int Porta) throws RemoteException {
+	public synchronized void NoduloAtivo(String Ip, int Porta) throws RemoteException {
 		this.NosAtivos.add(Ip);
 		this.PortaNosAtivos.add(Porta);
 		System.out.println("Conexão com o nó de Ip " + Ip + "De porta " + Porta + ". Mas ainda aguardando conexões até segunda ordem.");
@@ -66,42 +64,51 @@ public class Coordenad extends UnicastRemoteObject implements InterfaceRMI {
 	}
 	@Override
 	public ArrayList<String> getNosAtivos() throws RemoteException{
-		return this.NosAtivos;
+		return new ArrayList<>(this.NosAtivos);
 	}
 	@Override
 	public ArrayList<Integer> getPortaNosAtivos() throws RemoteException{
-		return this.PortaNosAtivos;
+		return new ArrayList<>(this.PortaNosAtivos);
 	}
 	
-	// esse metodo abaixo nao deveria estar aqui, e sim no ServidorPrincipal pq aqui é so um no coordenador que vai mapear os nós na rede.
-	public void enviarPartes(byte[] buffer, String noAtual, int Porta, int bytesLidos, int idChunk) throws UnknownHostException, IOException {
-		this.soquete = new Socket(noAtual, Porta);
-		// parte de envio de dados agora, com DataOutputStream e DataInputStream
-		DataOutputStream dos = new DataOutputStream(this.soquete.getOutputStream());
-		// dados sao enviados NESTA ORDEM.
-		dos.writeInt(idChunk); // envio do ID do chunk
-		dos.writeInt(bytesLidos); // envio de quantos bytes foram lidos
-		if (idChunk != -1) {
-		dos.write(buffer, 0, bytesLidos);
-		}
-		
-		this.soquete.close();
-		// lembrando: DataOutputStream é para dados que vao ser enviados (associar com saída)
-		// DataInputStream é para dados que estão sendo recebidos
-		// FileOutputStream e FileInputStream funcionam ao contrario, o primeiro é para dados recebidos que vao compor um arquivo
-		// e o segundo é para dados que vao ser enviados de um arquivo especifico
-	}
 	@Override
 	public void setNomeArquivo(String nome) throws RemoteException {
 		this.nome = nome;
-		
 	}
+
 	@Override
 	public String getNomeArquivo() throws RemoteException {
-		
 		return this.nome;
 	}
-	
-	
 
+	@Override
+	public synchronized void removerNoAtivo(String ip, int porta) throws RemoteException {
+		for (int i = 0; i < NosAtivos.size(); i++) {
+			if (NosAtivos.get(i).equals(ip) && PortaNosAtivos.get(i).equals(porta)) {
+				NosAtivos.remove(i);
+				PortaNosAtivos.remove(i);
+				break;
+			}
+		}
+	}
+
+	@Override
+	public void setCaminhoArquivo(String caminho) throws RemoteException {
+		this.caminhoArquivo = caminho;
+	}
+
+	@Override
+	public String getCaminhoArquivo() throws RemoteException {
+		return this.caminhoArquivo;
+	}
+
+	@Override
+	public void setTotalChunks(int total) throws RemoteException {
+		this.totalChunks = total;
+	}
+
+	@Override
+	public int getTotalChunks() throws RemoteException {
+		return this.totalChunks;
+	}
 }
