@@ -3,14 +3,12 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
@@ -18,7 +16,7 @@ public class cliente {
 
 	public static void main (String[] args) {
 		try {
-			String ipServer = "127.0.0.1";
+			String ipServer = "";
 			// ========================================================
 						// PARA TESTAR MÚLTIPLOS NÓS, MUDA APENAS A PORTA!
 						// O IP é sempre 127.0.0.1 no macOS (outros loopbacks não existem)
@@ -26,8 +24,8 @@ public class cliente {
 						// Nó 2: minhaPorta = 6001
 						// Nó 3: minhaPorta = 6002
 						// ========================================================
-						String meuIP = "127.0.0.1";
-						int minhaPorta = 6000;
+						String meuIP = "";
+						int minhaPorta = 5000;
 						int portaServer = 1099;
 						
 						
@@ -37,6 +35,9 @@ public class cliente {
 						}
 			
 			ServerSocket soqueteNode = new ServerSocket(minhaPorta);
+			//Scanner scanner_ = new Scanner(System.in);
+			//System.out.println("Digite o endereço Ip do servidor: ");
+			//String ipServer = scanner_.nextLine();
 			Registry registry = LocateRegistry.getRegistry(ipServer, portaServer);
 			InterfaceRMI coordenadoremoto = (InterfaceRMI) registry.lookup("CoordenadorServidor");
 			System.out.println("Conectando ao registro RMI em: " + ipServer);
