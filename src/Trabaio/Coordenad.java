@@ -84,9 +84,9 @@ public class Coordenad extends UnicastRemoteObject implements InterfaceRMI {
 	@Override
 	public synchronized void removerNoAtivo(String ip, int porta) throws RemoteException {
 		for (int i = 0; i < NosAtivos.size(); i++) {
-			if (NosAtivos.get(i).equals(ip) && PortaNosAtivos.get(i).equals(porta)) {
-				NosAtivos.remove(i);
-				PortaNosAtivos.remove(i);
+			if (this.NosAtivos.get(i).equals(ip) && this.PortaNosAtivos.get(i).equals(porta)) {
+				this.NosAtivos.remove(i);
+				this.PortaNosAtivos.remove(i);
 				break;
 			}
 		}

@@ -21,7 +21,6 @@ public class ServidorPrincipal {
 	private static volatile boolean servidorChunksIniciado = false;
 	private static final int PORTA_SERVIDOR_CHUNKS = 7000;
 	private static final int CHUNK_SIZE = 1024 * 1024;
-
 	public static void main(String[] args) {
 		try {
 			Registry registry;
@@ -37,6 +36,7 @@ public class ServidorPrincipal {
 			System.out.println("Servidor RMI está online e aguardando conexões.");
 			Scanner scanner = new Scanner(System.in);
 			while (true) {
+				iniciarHeartbeat(cordenador); // movi pra ca para pegar desde antes do envio de arquivos
 				System.out.println("---------//MENU//------------");
 				System.out.println("Digite o caminho para o arquivo que quer compartilhar");
 				System.out.println("Digite 'sair' para encerrar o servidor.");
@@ -66,6 +66,7 @@ public class ServidorPrincipal {
 							int noAtual = idChunk % numNosAtivos;
 							enviarPartes(bufferArqv, nosAtivos.get(noAtual), portaRespec.get(noAtual), bytesLidos, idChunk);
 							idChunk++;
+							
 						}
 						System.out.println("Arquivo inteiro dividido e compartilhado com sucesso!");
 						byte[] bufferAviso = new byte[0];
@@ -74,7 +75,7 @@ public class ServidorPrincipal {
 						}
 						cordenador.setCaminhoArquivo(input);
 						cordenador.setTotalChunks(idChunk);
-						iniciarHeartbeat(cordenador);
+						
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -91,7 +92,7 @@ public class ServidorPrincipal {
 		Thread hb = new Thread(() -> {
 			while (true) {
 				try {
-					Thread.sleep(5000);
+					Thread.sleep(3000);
 					ArrayList<String> nos = cordenador.getNosAtivos();
 					ArrayList<Integer> portas = cordenador.getPortaNosAtivos();
 					for (int i = 0; i < nos.size(); i++) {
@@ -110,7 +111,7 @@ public class ServidorPrincipal {
 								System.out.println("Apenas 1 nó restante. Servidor assumirá os "
 										+ chunksLostos.size() + " chunks perdidos para download direto.");
 								iniciarServidorDeChunks(cordenador, chunksLostos);
-							} else {
+							} else if (!chunksLostos.isEmpty()){
 								System.out.println("Redistribuindo " + chunksLostos.size()
 										+ " chunks entre " + nosRestantes.size() + " nós restantes...");
 								redistribuirChunks(cordenador, chunksLostos, nosRestantes, portasRestantes);
