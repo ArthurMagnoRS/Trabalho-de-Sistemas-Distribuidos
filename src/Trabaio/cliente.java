@@ -24,8 +24,8 @@ public class cliente {
 						// Nó 2: minhaPorta = 6001
 						// Nó 3: minhaPorta = 6002
 						// ========================================================
-						String meuIP = "127.0.0.3";
-						int minhaPorta = 5002;
+						String meuIP = "127.0.0.1";
+						int minhaPorta = 5000;
 						int portaServer = 1099;
 						
 						

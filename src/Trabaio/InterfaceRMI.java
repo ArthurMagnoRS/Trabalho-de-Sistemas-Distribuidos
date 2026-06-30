@@ -1,6 +1,5 @@
 package Trabaio;
-import java.io.IOException;
-import java.net.UnknownHostException;
+
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.ArrayList;

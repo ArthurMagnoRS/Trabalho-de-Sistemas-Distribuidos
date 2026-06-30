@@ -59,7 +59,7 @@ public class Coordenad extends UnicastRemoteObject implements InterfaceRMI {
 	public synchronized void NoduloAtivo(String Ip, int Porta) throws RemoteException {
 		this.NosAtivos.add(Ip);
 		this.PortaNosAtivos.add(Porta);
-		System.out.println("Conexão com o nó de Ip " + Ip + "De porta " + Porta + ". Mas ainda aguardando conexões até segunda ordem.");
+		System.out.println("Conexão com o nó de Ip " + Ip + " De porta " + Porta + ". Mas ainda aguardando conexões até segunda ordem.");
 		
 	}
 	@Override
