@@ -19,11 +19,16 @@ public class ServidorPrincipal {
 
 	private static volatile boolean heartbeatStartado = false;
 	private static volatile boolean servidorChunksIniciado = false;
-	private static final int PORTA_SERVIDOR_CHUNKS = 7000;
+	private static final int PORTA_SERVIDOR_CHUNKS = 7100;
 	private static final int CHUNK_SIZE = 1024 * 1024;
 
 	public static void main(String[] args) {
 		try {
+			// args[0] = IP real desta máquina na rede (ex: 192.168.1.10)
+			String meuIpReal = (args.length > 0) ? args[0] : "10.13.79.98";
+			System.setProperty("java.rmi.server.hostname", meuIpReal);
+			System.out.println("Servidor iniciado com IP: " + meuIpReal);
+
 			Registry registry;
 			try {
 				registry = LocateRegistry.createRegistry(1099);
