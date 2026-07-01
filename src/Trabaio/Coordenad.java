@@ -60,7 +60,15 @@ public class Coordenad extends UnicastRemoteObject implements InterfaceRMI {
 		this.NosAtivos.add(Ip);
 		this.PortaNosAtivos.add(Porta);
 		System.out.println("Conexão com o nó de Ip " + Ip + " De porta " + Porta + ". Mas ainda aguardando conexões até segunda ordem.");
-		
+		System.out.println("Verificando se o nó ja estava conectado antes...");
+		List<Integer> chunksDesseNo = new ArrayList<>();
+		chunksDesseNo = buscarChunkDono(Ip);
+		if (chunksDesseNo.isEmpty()) {
+			System.out.println("Esse nó é uma nova conexão e não possui chunks guardados, e ainda precisa da sua distribuição.");
+		}
+		else {
+			System.out.println("Esse nó ja havia uma conexão antes e guarda os nós: "+ chunksDesseNo);
+		}
 	}
 	@Override
 	public ArrayList<String> getNosAtivos() throws RemoteException{

@@ -9,8 +9,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 
 public class cliente {
 
@@ -24,8 +28,8 @@ public class cliente {
 						// Nó 2: minhaPorta = 6001
 						// Nó 3: minhaPorta = 6002
 						// ========================================================
-						String meuIP = "127.0.0.1";
-						int minhaPorta = 5000;
+						String meuIP = "127.0.0.2";
+						int minhaPorta = 5001;
 						int portaServer = 1099;
 						
 						
@@ -33,6 +37,11 @@ public class cliente {
 						if (!pastaNode.exists()) {
 							pastaNode.mkdir(); // Cria a pasta se não existir
 						}
+			// Mapeia o ID do Chunk para um conjunto de IPs que o possuem. Ex: Chunk 2 -> ["127.0.0.1:5000", "127.0.0.1:5001"]
+			ConcurrentHashMap<Integer, Set<String>> cacheChunks = new ConcurrentHashMap<>();
+			
+			// Guarda IPs de colegas que fomos descobrindo (para fofocarmos com eles depois)
+			Set<String> knownPeers = ConcurrentHashMap.newKeySet();
 			
 			ServerSocket soqueteNode = new ServerSocket(minhaPorta);
 			//Scanner scanner_ = new Scanner(System.in);
@@ -42,12 +51,58 @@ public class cliente {
 			InterfaceRMI coordenadoremoto = (InterfaceRMI) registry.lookup("CoordenadorServidor");
 			System.out.println("Conectando ao registro RMI em: " + ipServer);
 			coordenadoremoto.NoduloAtivo(meuIP, minhaPorta);
+			
+			List<Integer> myChunks = coordenadoremoto.buscarChunkDono(meuIP + ":" + minhaPorta); 
+			if (!myChunks.isEmpty()) {
+				System.out.println("O RMI indica que ja possuo chunks: " + myChunks);
+				new Thread(() -> iniciarDownloadP2P(coordenadoremoto, meuIP, pastaNode, cacheChunks)).start();
+			}
+				
 			System.out.println("Conexão efetuada com sucesso! Carregando demais configurações e aceitando envios!");
+			new Thread(() -> {
+				while(true) {
+					try {
+						Thread.sleep(8000); 
+						if (knownPeers.isEmpty() || cacheChunks.isEmpty()) continue;
+						
+						// Escolhe um colega que conhecemos para enviar a fofoca
+						String peerAlvo = null;
+						for (String p : knownPeers) {
+							if (!p.equals(meuIP)) {
+								peerAlvo = p;
+								break;
+							}
+						}
+						
+						if (peerAlvo != null) {
+							String[] partes = peerAlvo.split(":");
+							try (Socket s = new Socket(partes[0], Integer.parseInt(partes[1]))) {
+								DataOutputStream dos = new DataOutputStream(s.getOutputStream());
+								dos.writeInt(-5); // FLAG -5: SINAL DE FOFOCA (GOSSIP)
+								
+								dos.writeInt(cacheChunks.size()); // Envia quantas chaves de chunks temos
+								for (Map.Entry<Integer, Set<String>> entrada : cacheChunks.entrySet()) {
+									dos.writeInt(entrada.getKey()); // ID do Chunk
+									dos.writeInt(entrada.getValue().size()); // Quantos donos conhecemos deste chunk
+									for (String donoIP : entrada.getValue()) {
+										dos.writeUTF(donoIP); // O IP do dono
+									}
+								}
+								// Descomente a linha abaixo se quiser ver a fofoca a acontecer em tempo real!
+								// System.out.println("[GOSSIP] Enviei o meu mapa de chunks para o colega " + peerAlvo);
+							} catch (Exception e) {
+								knownPeers.remove(peerAlvo); // O colega caiu, removemos da lista
+							}
+						}
+					} catch (Exception e) { }
+				}
+			}).start();
+		
 			while (true) {
 				Socket recebimento = soqueteNode.accept();
 				DataInputStream dis = new DataInputStream(recebimento.getInputStream());
 				// leitura deve ser feita na ORDEM DE ENVIO
-				int idChunk = dis.readInt(); // primeiro o id
+				 int idChunk = dis.readInt(); // primeiro o id
 				
 				
 				if (idChunk == -1) {
@@ -146,6 +201,29 @@ public class cliente {
 				ack.flush();
 				recebimento.close();
 				continue;
+			} else if (idChunk == -5) { // FLAG -5 PARA DETECTAR O COMPARTILHAMENTO DE CACHE DE QUAIS NOS TEM QUAIS CHUNKS
+				int numEntradas = dis.readInt();
+				int infosAprendidas = 0;
+				
+				for (int i = 0; i < numEntradas; i++) {
+					int cId = dis.readInt();
+					int donosCount = dis.readInt();
+					for (int d = 0; d < donosCount; d++) {
+						String donoIP = dis.readUTF(); 
+						
+						// Adiciona ao cache. Se retornar true, é uma novidade que não sabíamos!
+						boolean isNovo = cacheChunks.computeIfAbsent(cId, k -> ConcurrentHashMap.newKeySet()).add(donoIP);
+						if (isNovo && !donoIP.equals(meuIP)) {
+							infosAprendidas++;
+							knownPeers.add(donoIP); // Adiciona este IP aos amigos para fofocar depois
+						}
+					}
+				}
+				
+				if (infosAprendidas > 0) {
+					System.out.println("[GOSSIP] Um colega partilhou o seu índice! Aprendi " + infosAprendidas + " novas localizações de ficheiros.");
+				}
+				
 			} else {
 				int tamArqv = dis.readInt(); // dps o tamanho
 				byte[] buffer = new byte[tamArqv]; // agr o buffer
@@ -171,4 +249,51 @@ public class cliente {
 			
 		
 }
+	// logica caso o no ja tiver se conectado antes para agora efetuar o download:
+				private static void iniciarDownloadP2P(InterfaceRMI coordenador, String meuNodeId, File pastaNode, ConcurrentHashMap<Integer, Set<String>> cacheChunks) {
+					try {
+						Scanner scannerReq = new Scanner(System.in);
+						System.out.println("\n//////// DIGITE 'SIM' PARA FAZER O DOWNLOAD DO RESTANTE DO FICHEIRO ////////");
+						//if (!scannerReq.nextLine().equalsIgnoreCase("sim")) return;
+						
+						int totalDeChunks = coordenador.getTotalChunks();
+						List<Integer> meusChunks = coordenador.buscarChunkDono(meuNodeId);
+						
+						for (int i = 0; i < totalDeChunks; i++) {
+							if (meusChunks.contains(i)) continue; // Já tenho, avanço
+							
+							String dono = coordenador.buscarDonoChunk(i); 
+							if (dono == null) {
+								System.out.println("Erro: Ninguém na rede possui o chunk " + i);
+								continue;
+							}
+							
+							String[] partes = dono.split(":");
+							Socket envioReq = new Socket(partes[0], Integer.parseInt(partes[1]));
+							DataOutputStream dos = new DataOutputStream(envioReq.getOutputStream());
+							DataInputStream disResposta = new DataInputStream(envioReq.getInputStream());
+							
+							dos.writeInt(-2); // Flag Pedido P2P
+							dos.writeInt(i);  // Qual chunk quero
+							
+							int tamResp = disResposta.readInt();
+							byte[] buffer = new byte[tamResp];
+							disResposta.readFully(buffer); 
+							
+							File arqvMolde = new File(pastaNode, "chunk_" + i + ".part");
+							FileOutputStream fos = new FileOutputStream(arqvMolde);
+							fos.write(buffer);
+							fos.close();
+							envioReq.close();
+							
+							coordenador.registrarPosseChunk(i, meuNodeId);
+							cacheChunks.computeIfAbsent(i, k -> ConcurrentHashMap.newKeySet()).add(meuNodeId);
+							meusChunks.add(i);
+							System.out.println("Chunk " + i + " baixado de " + dono);
+						}
+					}
+					catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
 }
